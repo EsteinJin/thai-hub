@@ -1,12 +1,13 @@
 {
   "name": "thai-learning-cards",
-  "version": "1.0.0",
+  "version": "1.3.0",
   "description": "智能化的泰语学习卡片应用，通过先进技术和交互式设计为语言学习者提供个性化、沉浸式的学习体验",
   "main": "index.html",
   "scripts": {
     "start": "python -m http.server 8080 || php -S localhost:8080 || node -e \"require('http').createServer((req,res)=>{require('fs').createReadStream(req.url==='/'?'index.html':req.url.slice(1)).pipe(res)}).listen(8080)\"",
     "build": "echo 'This is a static HTML application. No build step required.'",
-    "deploy": "echo 'Copy all files to your web server directory'"
+    "deploy": "echo 'Push to GitHub and enable GitHub Pages for automatic deployment'",
+    "deploy:github": "git add . && git commit -m 'Deploy latest version' && git push origin main"
   },
   "keywords": [
     "thai",

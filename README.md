@@ -25,18 +25,19 @@ php -S localhost:8080
 
 ## 📦 部署说明
 
-### 阿里云部署
-1. 将所有文件上传到服务器的Web目录（如 `/var/www/html/`）
-2. 确保Web服务器（Nginx/Apache）正确配置
-3. 访问您的域名即可使用
+### GitHub Pages部署（推荐）
+1. Fork或下载代码到GitHub仓库
+2. 在仓库设置中启用GitHub Pages
+3. 选择main分支作为源
+4. 访问 `https://your-username.github.io/repository-name`
 
-### 静态网站托管
-本应用是纯静态网站，可以部署到：
-- 阿里云OSS静态网站托管
-- GitHub Pages
-- Netlify
-- Vercel
-- 任何静态网站托管服务
+### 其他部署选项
+- **Netlify**: 拖拽文件夹到Netlify部署页面
+- **Vercel**: 连接GitHub仓库自动部署  
+- **阿里云OSS**: 上传文件并启用静态网站托管
+- **任何静态托管服务**: 直接上传所有文件
+
+详细部署指南请查看 [deploy.md](deploy.md)
 
 ## 🛠️ 技术栈
 
@@ -56,6 +57,10 @@ php -S localhost:8080
 - 📱 响应式设计
 - 📊 学习进度跟踪
 - 🔧 文件管理功能
+- 📥 文件下载功能（SVG图片 + 音频）
+- 🎯 多重下载方式确保可靠性
+- 📊 实时下载进度显示
+- 🔄 智能音频生成和缓存
 
 ## 📁 项目结构
 
