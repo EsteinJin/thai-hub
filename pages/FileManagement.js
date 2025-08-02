@@ -238,6 +238,102 @@ function FileManagement({ onBack }) {
                     生成音频
                   </button>
                   <button 
+                    onClick={async () => {
+                      try {
+                        const selectedCardList = cards.filter(card => selectedCards.has(card.id));
+                        
+                        if (selectedCardList.length === 0) {
+                          setUploadStatus('请先选择要下载的卡片');
+                          setTimeout(() => setUploadStatus(''), 3000);
+                          return;
+                        }
+
+                        setUploadStatus('开始下载文件...');
+                        
+                        await ZipUtils.downloadFilesSequentially(
+                          selectedCardList,
+                          selectedLevel,
+                          (message, progress) => {
+                            setUploadStatus(`${message} (${progress}%)`);
+                          }
+                        );
+                        
+                        setUploadStatus(`成功下载 ${selectedCards.size} 张卡片的所有文件`);
+                        setTimeout(() => setUploadStatus(''), 3000);
+                        
+                      } catch (error) {
+                        console.error('Download failed:', error);
+                        setUploadStatus(`下载失败: ${error.message}`);
+                        setTimeout(() => setUploadStatus(''), 5000);
+                      }
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white text-sm py-1 px-3 rounded transition-colors"
+                  >
+                    下载所有文件
+                  </button>
+                  <button 
+                    onClick={() => {
+                      try {
+                        setUploadStatus('正在准备JSON导出...');
+                        const selectedCardList = cards.filter(card => selectedCards.has(card.id));
+                        
+                        if (selectedCardList.length === 0) {
+                          setUploadStatus('请先选择要下载的卡片');
+                          setTimeout(() => setUploadStatus(''), 3000);
+                          return;
+                        }
+
+                        // Create simple JSON export
+                        const exportData = {
+                          type: 'thai-learning-cards-export',
+                          version: '1.0',
+                          level: selectedLevel,
+                          exportDate: new Date().toISOString(),
+                          totalCards: selectedCardList.length,
+                          cards: selectedCardList,
+                          audioUrls: {},
+                          instructions: '这是泰语学习卡片的JSON导出文件。包含完整的卡片数据，可以重新导入到应用中使用。'
+                        };
+
+                        // Add cached audio URLs if available
+                        selectedCardList.forEach(card => {
+                          const wordKey = `${card.thai}_th`;
+                          const exampleKey = `${card.example}_th`;
+                          
+                          if (AudioUtils.audioCache.has(wordKey)) {
+                            exportData.audioUrls[`word_${card.id}`] = AudioUtils.audioCache.get(wordKey);
+                          }
+                          if (AudioUtils.audioCache.has(exampleKey)) {
+                            exportData.audioUrls[`example_${card.id}`] = AudioUtils.audioCache.get(exampleKey);
+                          }
+                        });
+                        
+                        // Create and download JSON file
+                        const jsonString = JSON.stringify(exportData, null, 2);
+                        const blob = new Blob([jsonString], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `thai-cards-level-${selectedLevel}-${new Date().toISOString().split('T')[0]}.json`;
+                        a.click();
+                        
+                        URL.revokeObjectURL(url);
+                        
+                        setUploadStatus(`成功下载 ${selectedCards.size} 张卡片数据`);
+                        setTimeout(() => setUploadStatus(''), 3000);
+                        
+                      } catch (error) {
+                        console.error('Download failed:', error);
+                        setUploadStatus(`下载失败: ${error.message}`);
+                        setTimeout(() => setUploadStatus(''), 5000);
+                      }
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm py-1 px-3 rounded transition-colors"
+                  >
+                    下载JSON数据
+                  </button>
+                  <button 
                     onClick={() => {
                       if (confirm(`确定要删除选中的 ${selectedCards.size} 张卡片吗？`)) {
                         // Remove selected cards from mock data
@@ -291,9 +387,95 @@ function FileManagement({ onBack }) {
                   <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">
                     {card.chinese}
                   </p>
-                  <p className="text-slate-500 dark:text-slate-500 text-xs">
+                  <p className="text-slate-500 dark:text-slate-500 text-xs mb-3">
                     {card.pronunciation}
                   </p>
+                  <div className="flex space-x-1">
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          setUploadStatus(`正在下载卡片 ${card.thai} 的文件...`);
+                          
+                          await ZipUtils.downloadFilesSequentially(
+                            [card],
+                            selectedLevel,
+                            (message, progress) => {
+                              setUploadStatus(`${message} (${progress}%)`);
+                            }
+                          );
+                          
+                          setUploadStatus('单张卡片文件下载完成');
+                          setTimeout(() => setUploadStatus(''), 2000);
+                        } catch (error) {
+                          console.error('Single card download failed:', error);
+                          setUploadStatus(`下载失败: ${error.message}`);
+                          setTimeout(() => setUploadStatus(''), 3000);
+                        }
+                      }}
+                      className="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
+                    >
+                      下载文件
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        try {
+                          // Create simple JSON export for single card
+                          const exportData = {
+                            type: 'thai-learning-card-single',
+                            version: '1.0',
+                            level: selectedLevel,
+                            exportDate: new Date().toISOString(),
+                            card: card,
+                            audioUrls: {}
+                          };
+
+                          // Add cached audio URLs if available
+                          const wordKey = `${card.thai}_th`;
+                          const exampleKey = `${card.example}_th`;
+                          
+                          if (AudioUtils.audioCache.has(wordKey)) {
+                            exportData.audioUrls.word = AudioUtils.audioCache.get(wordKey);
+                          }
+                          if (AudioUtils.audioCache.has(exampleKey)) {
+                            exportData.audioUrls.example = AudioUtils.audioCache.get(exampleKey);
+                          }
+                          
+                          // Create and download JSON file
+                          const jsonString = JSON.stringify(exportData, null, 2);
+                          const blob = new Blob([jsonString], { type: 'application/json' });
+                          const url = URL.createObjectURL(blob);
+                          
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `card-${card.id}-${card.thai.replace(/[^\w\u0E00-\u0E7F]/g, '_')}.json`;
+                          a.click();
+                          
+                          URL.revokeObjectURL(url);
+                          
+                          setUploadStatus('JSON数据下载完成');
+                          setTimeout(() => setUploadStatus(''), 2000);
+                        } catch (error) {
+                          console.error('JSON download failed:', error);
+                          setUploadStatus(`JSON下载失败: ${error.message}`);
+                          setTimeout(() => setUploadStatus(''), 3000);
+                        }
+                      }}
+                      className="text-xs px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded"
+                    >
+                      JSON
+                    </button>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await AudioUtils.playAudio(card.thai, null, 'th');
+                      }}
+                      className="text-xs px-2 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded"
+                    >
+                      发音
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

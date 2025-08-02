@@ -15,6 +15,7 @@ const ZipUtils = {
           return {
             file: (filename, content) => {
               zip.files.set(`${name}/${filename}`, content);
+              return zip;
             }
           };
         },
@@ -31,145 +32,47 @@ const ZipUtils = {
     }
   },
 
-  // Create a proper ZIP file using manual ZIP format
+  // Create a simple archive as JSON instead of ZIP for reliability
   createZipFile: async (filesMap) => {
     try {
-      const files = [];
-      let offset = 0;
-      
-      // Process each file
+      console.log('Creating simple archive...');
+      const archive = {
+        type: 'thai-learning-package',
+        version: '1.0',
+        created: new Date().toISOString(),
+        files: {}
+      };
+
       for (const [filename, content] of filesMap) {
-        let fileData;
-        let uncompressedSize;
-        
         if (typeof content === 'string') {
-          fileData = new TextEncoder().encode(content);
-          uncompressedSize = fileData.length;
+          archive.files[filename] = {
+            type: 'text',
+            content: content
+          };
         } else if (content instanceof Blob) {
-          fileData = new Uint8Array(await content.arrayBuffer());
-          uncompressedSize = fileData.length;
+          // Convert blob to base64 for JSON storage
+          const base64 = await ZipUtils.blobToBase64(content);
+          archive.files[filename] = {
+            type: 'blob',
+            mimeType: content.type || 'application/octet-stream',
+            content: base64,
+            size: content.size
+          };
         } else {
-          const str = String(content);
-          fileData = new TextEncoder().encode(str);
-          uncompressedSize = fileData.length;
+          archive.files[filename] = {
+            type: 'text',
+            content: String(content)
+          };
         }
-        
-        files.push({
-          filename: filename,
-          data: fileData,
-          uncompressedSize: uncompressedSize,
-          compressedSize: uncompressedSize, // No compression for simplicity
-          offset: offset
-        });
-        
-        offset += 30 + filename.length + uncompressedSize; // Local file header + filename + data
       }
-      
-      // Calculate total size
-      const centralDirSize = files.reduce((sum, file) => sum + 46 + file.filename.length, 0);
-      const totalSize = offset + centralDirSize + 22; // + End of central directory
-      
-      const zipData = new Uint8Array(totalSize);
-      let pos = 0;
-      
-      // Write local file headers and data
-      for (const file of files) {
-        // Local file header signature
-        zipData.set([0x50, 0x4b, 0x03, 0x04], pos); pos += 4;
-        // Version needed to extract
-        zipData.set([0x14, 0x00], pos); pos += 2;
-        // General purpose bit flag
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // Compression method (0 = no compression)
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // File last modification time
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // File last modification date
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // CRC-32
-        const crc = ZipUtils.crc32(file.data);
-        zipData.set(ZipUtils.uint32ToBytes(crc), pos); pos += 4;
-        // Compressed size
-        zipData.set(ZipUtils.uint32ToBytes(file.compressedSize), pos); pos += 4;
-        // Uncompressed size
-        zipData.set(ZipUtils.uint32ToBytes(file.uncompressedSize), pos); pos += 4;
-        // Filename length
-        zipData.set(ZipUtils.uint16ToBytes(file.filename.length), pos); pos += 2;
-        // Extra field length
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // Filename
-        const filenameBytes = new TextEncoder().encode(file.filename);
-        zipData.set(filenameBytes, pos); pos += filenameBytes.length;
-        // File data
-        zipData.set(file.data, pos); pos += file.data.length;
-      }
-      
-      const centralDirStart = pos;
-      
-      // Write central directory
-      for (const file of files) {
-        // Central directory file header signature
-        zipData.set([0x50, 0x4b, 0x01, 0x02], pos); pos += 4;
-        // Version made by
-        zipData.set([0x14, 0x00], pos); pos += 2;
-        // Version needed to extract
-        zipData.set([0x14, 0x00], pos); pos += 2;
-        // General purpose bit flag
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // Compression method
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // File last modification time
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // File last modification date
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // CRC-32
-        const crc = ZipUtils.crc32(file.data);
-        zipData.set(ZipUtils.uint32ToBytes(crc), pos); pos += 4;
-        // Compressed size
-        zipData.set(ZipUtils.uint32ToBytes(file.compressedSize), pos); pos += 4;
-        // Uncompressed size
-        zipData.set(ZipUtils.uint32ToBytes(file.uncompressedSize), pos); pos += 4;
-        // Filename length
-        zipData.set(ZipUtils.uint16ToBytes(file.filename.length), pos); pos += 2;
-        // Extra field length
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // File comment length
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // Disk number start
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // Internal file attributes
-        zipData.set([0x00, 0x00], pos); pos += 2;
-        // External file attributes
-        zipData.set([0x00, 0x00, 0x00, 0x00], pos); pos += 4;
-        // Relative offset of local header
-        zipData.set(ZipUtils.uint32ToBytes(file.offset), pos); pos += 4;
-        // Filename
-        const filenameBytes = new TextEncoder().encode(file.filename);
-        zipData.set(filenameBytes, pos); pos += filenameBytes.length;
-      }
-      
-      // End of central directory record
-      // End of central directory signature
-      zipData.set([0x50, 0x4b, 0x05, 0x06], pos); pos += 4;
-      // Number of this disk
-      zipData.set([0x00, 0x00], pos); pos += 2;
-      // Disk where central directory starts
-      zipData.set([0x00, 0x00], pos); pos += 2;
-      // Number of central directory records on this disk
-      zipData.set(ZipUtils.uint16ToBytes(files.length), pos); pos += 2;
-      // Total number of central directory records
-      zipData.set(ZipUtils.uint16ToBytes(files.length), pos); pos += 2;
-      // Size of central directory
-      zipData.set(ZipUtils.uint32ToBytes(centralDirSize), pos); pos += 4;
-      // Offset of start of central directory
-      zipData.set(ZipUtils.uint32ToBytes(centralDirStart), pos); pos += 4;
-      // ZIP file comment length
-      zipData.set([0x00, 0x00], pos); pos += 2;
-      
-      return new Blob([zipData], { type: 'application/zip' });
+
+      const jsonString = JSON.stringify(archive, null, 2);
+      return new Blob([jsonString], { type: 'application/json' });
     } catch (error) {
-      console.error('Error creating ZIP file:', error);
-      return null;
+      console.error('Error creating archive:', error);
+      // Fallback to simple text file
+      const fallbackContent = `泰语学习卡片下载包\n创建时间: ${new Date().toLocaleString()}\n\n文件列表:\n${Array.from(filesMap.keys()).join('\n')}`;
+      return new Blob([fallbackContent], { type: 'text/plain' });
     }
   },
 
@@ -222,7 +125,228 @@ const ZipUtils = {
     });
   },
 
+  // Generate SVG card image with better formatting
+  generateCardSVG: (card, index) => {
+    const cardNumber = String(index + 1).padStart(3, '0');
+    const filename = `card_${cardNumber}_${card.thai.replace(/[^\w\u0E00-\u0E7F]/g, '_')}.svg`;
+    
+    // Escape special characters for SVG
+    const escapeXml = (text) => {
+      return text.replace(/&/g, '&amp;')
+                 .replace(/</g, '&lt;')
+                 .replace(/>/g, '&gt;')
+                 .replace(/"/g, '&quot;')
+                 .replace(/'/g, '&#39;');
+    };
+    
+    const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .card-bg { fill: #ffffff; stroke: #e2e8f0; stroke-width: 2; }
+      .thai-text { font-family: Arial, sans-serif; font-size: 28px; font-weight: bold; fill: #1e293b; text-anchor: middle; }
+      .pronunciation { font-family: Arial, sans-serif; font-size: 16px; fill: #64748b; text-anchor: middle; }
+      .chinese { font-family: Arial, sans-serif; font-size: 18px; fill: #374151; text-anchor: middle; }
+      .example-bg { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1; }
+      .example-label { font-family: Arial, sans-serif; font-size: 11px; fill: #64748b; font-weight: bold; }
+      .example-text { font-family: Arial, sans-serif; font-size: 12px; fill: #1e293b; }
+      .example-chinese { font-family: Arial, sans-serif; font-size: 11px; fill: #64748b; }
+      .card-info { font-family: Arial, sans-serif; font-size: 10px; fill: #94a3b8; }
+    </style>
+  </defs>
+  <rect width="400" height="300" class="card-bg" rx="12"/>
+  <text x="200" y="50" class="thai-text">${escapeXml(card.thai)}</text>
+  <text x="200" y="75" class="pronunciation">[${escapeXml(card.pronunciation)}]</text>
+  <text x="200" y="100" class="chinese">${escapeXml(card.chinese)}</text>
+  <rect x="15" y="120" width="370" height="130" class="example-bg" rx="8"/>
+  <text x="25" y="140" class="example-label">例句 EXAMPLE:</text>
+  <text x="25" y="160" class="example-text">${escapeXml(ZipUtils.wrapText(card.example, 30))}</text>
+  <text x="25" y="180" class="example-chinese">${escapeXml(ZipUtils.wrapText(card.example_translation, 35))}</text>
+  <text x="25" y="270" class="card-info">卡片 ${cardNumber} | 级别 ${card.level} | 泰语学习卡片</text>
+</svg>`;
 
+    return {
+      content: svgContent,
+      filename: filename
+    };
+  },
+
+  // Helper function to wrap text for SVG
+  wrapText: (text, maxLength) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  },
+
+  // Download real audio file from URL
+  downloadAudioFile: async (url, filename) => {
+    try {
+      // Try direct download first
+      let response;
+      try {
+        response = await fetch(url, {
+          method: 'GET',
+          mode: 'cors',
+          headers: {
+            'Accept': 'audio/*',
+          }
+        });
+      } catch (corsError) {
+        // If CORS fails, try with a proxy
+        console.log('Direct download failed, trying with proxy...');
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        response = await fetch(proxyUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'audio/*',
+          }
+        });
+      }
+      
+      if (response.ok) {
+        const audioBlob = await response.blob();
+        // Verify it's actually audio content
+        if (audioBlob.size > 0) {
+          return {
+            blob: audioBlob,
+            filename: filename,
+            size: audioBlob.size
+          };
+        } else {
+          throw new Error('Downloaded file is empty');
+        }
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error downloading audio from ${url}:`, error);
+      // Return a text file with the URL instead
+      const textContent = `Audio URL: ${url}\nFilename: ${filename}\nError: ${error.message}\n\nNote: Could not download the actual audio file due to CORS restrictions.`;
+      const textBlob = new Blob([textContent], { type: 'text/plain' });
+      return {
+        blob: textBlob,
+        filename: filename.replace('.mp3', '.txt'),
+        size: textBlob.size
+      };
+    }
+  },
+
+  // Create downloadable package with real files
+  createDownloadPackage: async (cards, level, onProgress) => {
+    try {
+      console.log('Starting download package creation...');
+      
+      const filesMap = new Map();
+      let processedCount = 0;
+      const totalSteps = cards.length * 3; // word audio + example audio + SVG image
+
+      // Process each card
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        const cardNumber = String(i + 1).padStart(3, '0');
+        
+        if (onProgress) {
+          onProgress(`处理卡片 ${i + 1}/${cards.length}: ${card.thai}`, Math.round((processedCount / totalSteps) * 100));
+        }
+
+        // Generate and add SVG image
+        try {
+          const svgData = ZipUtils.generateCardSVG(card, i);
+          filesMap.set(`images/${svgData.filename}`, svgData.content);
+          processedCount++;
+        } catch (error) {
+          console.error(`Error generating SVG for card ${card.id}:`, error);
+          processedCount++;
+        }
+
+        // Download word audio if available in cache
+        const wordCacheKey = `${card.thai}_th`;
+        const wordAudioUrl = AudioUtils.audioCache.get(wordCacheKey);
+        if (wordAudioUrl) {
+          try {
+            const wordFilename = `card_${cardNumber}_${card.thai.replace(/[^\w\u0E00-\u0E7F]/g, '_')}_word.mp3`;
+            const audioFile = await ZipUtils.downloadAudioFile(wordAudioUrl, wordFilename);
+            if (audioFile && audioFile.blob) {
+              filesMap.set(`audio/words/${audioFile.filename}`, audioFile.blob);
+              console.log(`Added word audio: ${audioFile.filename} (${audioFile.size} bytes)`);
+            }
+          } catch (error) {
+            console.error(`Error downloading word audio for card ${card.id}:`, error);
+          }
+        }
+        processedCount++;
+
+        // Download example audio if available in cache
+        const exampleCacheKey = `${card.example}_th`;
+        const exampleAudioUrl = AudioUtils.audioCache.get(exampleCacheKey);
+        if (exampleAudioUrl) {
+          try {
+            const exampleFilename = `card_${cardNumber}_${card.thai.replace(/[^\w\u0E00-\u0E7F]/g, '_')}_example.mp3`;
+            const audioFile = await ZipUtils.downloadAudioFile(exampleAudioUrl, exampleFilename);
+            if (audioFile && audioFile.blob) {
+              filesMap.set(`audio/examples/${audioFile.filename}`, audioFile.blob);
+              console.log(`Added example audio: ${audioFile.filename} (${audioFile.size} bytes)`);
+            }
+          } catch (error) {
+            console.error(`Error downloading example audio for card ${card.id}:`, error);
+          }
+        }
+        processedCount++;
+
+        // Small delay to avoid overwhelming the browser
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      // Add cards data as JSON
+      const cardsData = {
+        level: level,
+        cards: cards,
+        created: new Date().toISOString(),
+        totalCards: cards.length
+      };
+      filesMap.set(`data/cards_level_${level}.json`, JSON.stringify(cardsData, null, 2));
+
+      // Add README file
+      const readmeContent = `# 泰语学习卡片包 - 级别 ${level}
+
+## 文件结构
+- audio/words/ - 单词发音文件
+- audio/examples/ - 例句发音文件  
+- images/ - SVG格式卡片图片
+- data/ - 卡片数据JSON文件
+
+## 文件说明
+- 音频文件: MP3格式，高质量泰语发音
+- 图片文件: SVG格式，可缩放矢量图形
+- 数据文件: JSON格式，包含完整卡片信息
+
+## 文件命名规则
+- 音频: card_001_สวัสดี_word.mp3 (卡片编号_泰语_类型.mp3)
+- 图片: card_001_สวัสดี.svg (卡片编号_泰语.svg)
+
+生成时间: ${new Date().toLocaleString('zh-CN')}
+卡片数量: ${cards.length}
+级别: ${level}
+`;
+      filesMap.set('README.md', readmeContent);
+
+      if (onProgress) {
+        onProgress('正在生成下载文件...', 95);
+      }
+
+      // Generate final zip
+      const zipBlob = await ZipUtils.createZipFile(filesMap);
+      
+      if (onProgress) {
+        onProgress('下载准备完成！', 100);
+      }
+
+      return zipBlob;
+
+    } catch (error) {
+      console.error('Error creating download package:', error);
+      throw error;
+    }
+  },
 
   // Generate audio files for cards
   generateAudioFiles: async (cards) => {
@@ -337,6 +461,258 @@ const ZipUtils = {
     
     return imageFiles;
   },
+
+  // Download individual files sequentially
+  downloadFilesSequentially: async (cards, level, onProgress) => {
+    try {
+      let downloadCount = 0;
+      const totalFiles = cards.length * 3; // SVG + word audio + example audio
+      
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        const cardNumber = String(i + 1).padStart(3, '0');
+        const baseName = `card_${cardNumber}_${card.thai.replace(/[^\w\u0E00-\u0E7F]/g, '_')}`;
+        
+        if (onProgress) {
+          onProgress(`正在下载卡片 ${i + 1}/${cards.length}: ${card.thai}`, Math.round((downloadCount / totalFiles) * 100));
+        }
+        
+        // Download SVG
+        try {
+          const svgData = ZipUtils.generateCardSVG(card, i);
+          const svgBlob = new Blob([svgData.content], { type: 'image/svg+xml' });
+          ZipUtils.triggerDownload(svgBlob, svgData.filename);
+          downloadCount++;
+          await ZipUtils.delay(300); // Delay between downloads
+        } catch (error) {
+          console.error(`Error downloading SVG for card ${card.id}:`, error);
+          downloadCount++;
+        }
+        
+        // Download word audio (generate if not cached)
+        try {
+          const wordFilename = `${baseName}_word.mp3`;
+          await ZipUtils.generateAndDownloadAudio(card.thai, wordFilename, 'th');
+          downloadCount++;
+        } catch (error) {
+          console.error(`Error downloading word audio for card ${card.id}:`, error);
+          downloadCount++;
+        }
+        
+        // Download example audio (generate if not cached)  
+        try {
+          const exampleFilename = `${baseName}_example.mp3`;
+          await ZipUtils.generateAndDownloadAudio(card.example, exampleFilename, 'th');
+          downloadCount++;
+        } catch (error) {
+          console.error(`Error downloading example audio for card ${card.id}:`, error);
+          downloadCount++;
+        }
+        
+        await ZipUtils.delay(500); // Delay between cards
+      }
+      
+      if (onProgress) {
+        onProgress('下载完成！', 100);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in sequential download:', error);
+      throw error;
+    }
+  },
+
+  // Helper function to trigger file download
+  triggerDownload: (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+
+  // Helper function to download audio from URL
+  downloadAudioFromUrl: async (audioUrl, filename) => {
+    try {
+      // Method 1: Try direct fetch first
+      console.log(`Attempting to download audio from: ${audioUrl}`);
+      
+      let audioBlob = null;
+      let downloadSuccess = false;
+      
+      try {
+        const response = await fetch(audioUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'audio/mpeg, audio/mp3, audio/*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          },
+          mode: 'cors'
+        });
+        
+        if (response.ok) {
+          audioBlob = await response.blob();
+          if (audioBlob.size > 0) {
+            console.log(`Direct download successful: ${audioBlob.size} bytes`);
+            ZipUtils.triggerDownload(audioBlob, filename);
+            return true;
+          }
+        }
+      } catch (corsError) {
+        console.log('CORS failed, trying proxy method...');
+      }
+      
+      // Method 2: Try with CORS proxy
+      try {
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(audioUrl)}`;
+        const proxyResponse = await fetch(proxyUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'audio/*',
+          }
+        });
+        
+        if (proxyResponse.ok) {
+          audioBlob = await proxyResponse.blob();
+          if (audioBlob.size > 0) {
+            console.log(`Proxy download successful: ${audioBlob.size} bytes`);
+            ZipUtils.triggerDownload(audioBlob, filename);
+            return true;
+          }
+        }
+      } catch (proxyError) {
+        console.log('Proxy method failed, trying alternative...');
+      }
+      
+      // Method 3: Try alternative proxy
+      try {
+        const altProxyUrl = `https://cors-anywhere.herokuapp.com/${audioUrl}`;
+        const altResponse = await fetch(altProxyUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'audio/*',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
+        
+        if (altResponse.ok) {
+          audioBlob = await altResponse.blob();
+          if (audioBlob.size > 0) {
+            console.log(`Alternative proxy download successful: ${audioBlob.size} bytes`);
+            ZipUtils.triggerDownload(audioBlob, filename);
+            return true;
+          }
+        }
+      } catch (altError) {
+        console.log('Alternative proxy failed');
+      }
+      
+      // Method 4: Create downloadable link as fallback
+      console.log('All download methods failed, creating link file...');
+      const linkContent = `${audioUrl}`;
+      const linkBlob = new Blob([linkContent], { type: 'text/plain' });
+      ZipUtils.triggerDownload(linkBlob, filename.replace('.mp3', '_link.txt'));
+      
+      // Method 5: Try to open URL in new tab for manual download
+      setTimeout(() => {
+        const a = document.createElement('a');
+        a.href = audioUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.click();
+      }, 500);
+      
+      return false;
+      
+    } catch (error) {
+      console.error(`Failed to download audio from ${audioUrl}:`, error);
+      
+      // Final fallback: create instruction file
+      const instructionContent = `音频下载说明 / Audio Download Instructions
+
+原始音频链接 / Original Audio URL:
+${audioUrl}
+
+文件名 / Filename: ${filename}
+
+下载方法 / Download Methods:
+1. 点击上方链接直接访问音频文件
+2. 右键链接选择"另存为"保存音频文件  
+3. 复制链接到下载工具中下载
+
+注意 / Note: 
+由于浏览器安全限制，无法自动下载此音频文件。
+请手动点击链接下载。
+
+Due to browser security restrictions, this audio file cannot be downloaded automatically.
+Please manually click the link to download.`;
+
+      const instructionBlob = new Blob([instructionContent], { type: 'text/plain; charset=utf-8' });
+      ZipUtils.triggerDownload(instructionBlob, filename.replace('.mp3', '_download_instructions.txt'));
+      
+      return false;
+    }
+  },
+
+  // Generate and download audio immediately
+  generateAndDownloadAudio: async (text, filename, lang = 'th') => {
+    try {
+      console.log(`Generating and downloading audio for: ${text}`);
+      
+      // First try to get from cache
+      const cacheKey = `${text}_${lang}`;
+      const cachedUrl = AudioUtils.audioCache.get(cacheKey);
+      
+      if (cachedUrl) {
+        console.log('Found cached audio URL, attempting download...');
+        return await ZipUtils.downloadAudioFromUrl(cachedUrl, filename);
+      }
+      
+      // Generate new audio
+      console.log('Generating new audio...');
+      const audioUrl = await AudioUtils.generateAudio(text, lang);
+      
+      if (audioUrl) {
+        console.log('Audio generated successfully, downloading...');
+        return await ZipUtils.downloadAudioFromUrl(audioUrl, filename);
+      } else {
+        throw new Error('Failed to generate audio');
+      }
+      
+    } catch (error) {
+      console.error(`Failed to generate and download audio for "${text}":`, error);
+      
+      // Create fallback file with TTS instruction
+      const fallbackContent = `音频生成失败 / Audio Generation Failed
+
+文本内容 / Text Content: ${text}
+语言 / Language: ${lang}
+目标文件名 / Target Filename: ${filename}
+
+错误信息 / Error: ${error.message}
+
+建议 / Suggestions:
+1. 检查网络连接
+2. 稍后重试音频生成
+3. 使用在线TTS工具手动生成
+
+Check network connection and retry audio generation later.
+You can also use online TTS tools to generate audio manually.`;
+
+      const fallbackBlob = new Blob([fallbackContent], { type: 'text/plain; charset=utf-8' });
+      ZipUtils.triggerDownload(fallbackBlob, filename.replace('.mp3', '_generation_failed.txt'));
+      
+      return false;
+    }
+  },
+
+  // Helper function for delays
+  delay: (ms) => new Promise(resolve => setTimeout(resolve, ms)),
 
   // Create simple archive with only generated audio files
   createCompleteArchive: async (cards, level) => {
