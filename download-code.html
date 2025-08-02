@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>下载源代码 - 泰语学习卡片</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+    <style>
+        .download-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            transition: all 0.3s ease;
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="container mx-auto px-4 py-12">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header -->
+            <div class="text-center mb-12">
+                <h1 class="text-4xl font-bold text-gray-900 mb-4">
+                    泰语学习卡片 - 源代码下载
+                </h1>
+                <p class="text-xl text-gray-600 mb-8">
+                    完整的前端应用源代码，可直接在浏览器中运行
+                </p>
+                <div class="flex justify-center">
+                    <a href="index.html" class="text-blue-600 hover:text-blue-800 flex items-center space-x-2">
+                        <div class="icon-arrow-left"></div>
+                        <span>返回应用</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Download Section -->
+            <div class="bg-white rounded-2xl shadow-xl p-8 mb-8">
+                <div class="text-center mb-8">
+                    <div class="icon-download text-6xl text-blue-500 mb-4"></div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">
+                        下载完整源代码
+                    </h2>
+                    <p class="text-gray-600">
+                        包含所有HTML、CSS、JavaScript文件和资源
+                    </p>
+                </div>
+
+                <div class="flex justify-center">
+                    <button 
+                        onclick="downloadCode()" 
+                        class="download-btn text-white px-8 py-4 rounded-xl text-lg font-semibold flex items-center space-x-3"
+                    >
+                        <div class="icon-download text-xl"></div>
+                        <span>下载源代码 ZIP</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Features -->
+            <div class="grid md:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="icon-code text-3xl text-green-500 mb-4"></div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">纯前端应用</h3>
+                    <p class="text-gray-600">
+                        无需后端服务器，直接在浏览器中运行。使用React 18、Tailwind CSS构建。
+                    </p>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="icon-smartphone text-3xl text-purple-500 mb-4"></div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">响应式设计</h3>
+                    <p class="text-gray-600">
+                        完美适配桌面、平板、手机各种设备，支持触摸手势和键盘快捷键。
+                    </p>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="icon-volume-2 text-3xl text-blue-500 mb-4"></div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">智能语音</h3>
+                    <p class="text-gray-600">
+                        集成SoundOfText API和浏览器TTS，提供高质量泰语语音播放功能。
+                    </p>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="icon-settings text-3xl text-orange-500 mb-4"></div>
+                    <h3 class="text-xl font-bold text-gray-900 mb-3">易于定制</h3>
+                    <p class="text-gray-600">
+                        模块化设计，清晰的代码结构，可以轻松修改和扩展功能。
+                    </p>
+                </div>
+            </div>
+
+            <!-- File Structure -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <div class="icon-folder text-2xl text-yellow-500 mr-3"></div>
+                    文件结构
+                </h3>
+                <div class="bg-gray-50 rounded-lg p-4 font-mono text-sm">
+<pre>thai-learning-cards/
+├── index.html              # 主页面
+├── app.js                  # 主应用逻辑
+├── utils/                  # 工具函数
+│   ├── storage.js          # 本地存储
+│   ├── audio.js            # 音频处理
+│   └── mockData.js         # 示例数据
+├── components/             # React组件
+│   ├── Header.js           # 头部组件
+│   ├── LearningCard.js     # 学习卡片
+│   ├── CourseCard.js       # 课程卡片
+│   └── ...
+├── pages/                  # 页面组件
+│   ├── CourseSelection.js  # 课程选择
+│   ├── Learning.js         # 学习页面
+│   └── ...
+└── trickle/                # 项目文档
+    ├── notes/              # 项目说明
+    └── rules/              # 开发规则</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function downloadCode() {
+            try {
+                // 显示下载提示
+                const button = event.target.closest('button');
+                button.innerHTML = '<div class="icon-loader animate-spin text-xl"></div><span>准备下载...</span>';
+                button.disabled = true;
+
+                // 创建包含所有文件的ZIP
+                const zip = await createCodeZip();
+                
+                // 下载文件
+                const url = URL.createObjectURL(zip);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `thai-learning-cards-source-${new Date().toISOString().split('T')[0]}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                // 恢复按钮状态
+                button.innerHTML = '<div class="icon-check text-xl"></div><span>下载完成！</span>';
+                setTimeout(() => {
+                    button.innerHTML = '<div class="icon-download text-xl"></div><span>下载源代码 ZIP</span>';
+                    button.disabled = false;
+                }, 2000);
+
+            } catch (error) {
+                console.error('Download failed:', error);
+                alert('下载失败，请重试');
+                
+                // 恢复按钮状态
+                const button = event.target.closest('button');
+                button.innerHTML = '<div class="icon-download text-xl"></div><span>下载源代码 ZIP</span>';
+                button.disabled = false;
+            }
+        }
+
+        async function createCodeZip() {
+            // 获取所有页面的源代码
+            const files = await getAllSourceFiles();
+            
+            // 创建简单的ZIP文件
+            return createZipBlob(files);
+        }
+
+        async function getAllSourceFiles() {
+            const files = new Map();
+            
+            // 主要文件列表
+            const fileList = [
+                'index.html',
+                'app.js',
+                'utils/storage.js',
+                'utils/audio.js',
+                'utils/mockData.js',
+                'components/Header.js',
+                'components/ThemeToggle.js',
+                'components/ProgressBar.js',
+                'components/CourseCard.js',
+                'components/LearningCard.js',
+                'components/LoginForm.js',
+                'pages/CourseSelection.js',
+                'pages/Learning.js',
+                'pages/CardBrowser.js',
+                'pages/FileManagement.js'
+            ];
+
+            // 获取每个文件的内容
+            for (const filePath of fileList) {
+                try {
+                    const response = await fetch(filePath);
+                    if (response.ok) {
+                        const content = await response.text();
+                        files.set(filePath, content);
+                    }
+                } catch (error) {
+                    console.warn(`无法获取文件: ${filePath}`);
+                }
+            }
+
+            // 添加README文件
+            files.set('README.md', `# 泰语学习卡片应用
+
+智能化的泰语学习卡片应用，通过先进技术和交互式设计为语言学习者提供个性化、沉浸式的学习体验。
+
+## 快速开始
+
+1. 解压文件到任意目录
+2. 双击打开 index.html 文件
+3. 即可在浏览器中使用应用
+
+## 技术栈
+
+- React 18 (生产版本)
+- Tailwind CSS
+- Lucide Icons
+- SoundOfText API
+- Web Speech API
+
+## 功能特性
+
+- 四级泰语课程
+- 交互式学习卡片
+- 智能语音播放
+- 键盘快捷键支持
+- 深色模式
+- 响应式设计
+- 学习进度跟踪
+
+## 开发说明
+
+这是一个纯前端应用，无需任何构建工具或服务器。
+所有代码都可以直接在现代浏览器中运行。
+
+生成时间: ${new Date().toLocaleString('zh-CN')}
+`);
+
+            return files;
+        }
+
+        function createZipBlob(files) {
+            // 简化的ZIP创建函数
+            const zipData = [];
+            
+            // ZIP文件头
+            let centralDirectory = [];
+            let offset = 0;
+            
+            for (const [filename, content] of files) {
+                const fileData = new TextEncoder().encode(content);
+                const filenameBytes = new TextEncoder().encode(filename);
+                
+                // 本地文件头
+                const localHeader = new Uint8Array(30 + filenameBytes.length);
+                const view = new DataView(localHeader.buffer);
+                
+                // 签名
+                view.setUint32(0, 0x04034b50, true);
+                // 版本
+                view.setUint16(4, 20, true);
+                // 标志
+                view.setUint16(6, 0, true);
+                // 压缩方法 (0 = 无压缩)
+                view.setUint16(8, 0, true);
+                // 时间和日期
+                view.setUint16(10, 0, true);
+                view.setUint16(12, 0, true);
+                // CRC-32
+                view.setUint32(14, 0, true);
+                // 压缩大小
+                view.setUint32(18, fileData.length, true);
+                // 未压缩大小
+                view.setUint32(22, fileData.length, true);
+                // 文件名长度
+                view.setUint16(26, filenameBytes.length, true);
+                // 额外字段长度
+                view.setUint16(28, 0, true);
+                
+                // 文件名
+                localHeader.set(filenameBytes, 30);
+                
+                zipData.push(localHeader);
+                zipData.push(fileData);
+                
+                // 中央目录条目
+                const centralEntry = {
+                    filename: filename,
+                    filenameBytes: filenameBytes,
+                    fileData: fileData,
+                    offset: offset
+                };
+                centralDirectory.push(centralEntry);
+                
+                offset += localHeader.length + fileData.length;
+            }
+            
+            // 中央目录
+            const centralDirStart = offset;
+            let centralDirSize = 0;
+            
+            for (const entry of centralDirectory) {
+                const centralHeader = new Uint8Array(46 + entry.filenameBytes.length);
+                const view = new DataView(centralHeader.buffer);
+                
+                // 中央目录文件头签名
+                view.setUint32(0, 0x02014b50, true);
+                // 制作版本
+                view.setUint16(4, 20, true);
+                // 需要版本
+                view.setUint16(6, 20, true);
+                // 标志
+                view.setUint16(8, 0, true);
+                // 压缩方法
+                view.setUint16(10, 0, true);
+                // 时间和日期
+                view.setUint16(12, 0, true);
+                view.setUint16(14, 0, true);
+                // CRC-32
+                view.setUint32(16, 0, true);
+                // 压缩大小
+                view.setUint32(20, entry.fileData.length, true);
+                // 未压缩大小
+                view.setUint32(24, entry.fileData.length, true);
+                // 文件名长度
+                view.setUint16(28, entry.filenameBytes.length, true);
+                // 额外字段长度
+                view.setUint16(30, 0, true);
+                // 注释长度
+                view.setUint16(32, 0, true);
+                // 磁盘号
+                view.setUint16(34, 0, true);
+                // 内部文件属性
+                view.setUint16(36, 0, true);
+                // 外部文件属性
+                view.setUint32(38, 0, true);
+                // 本地头偏移
+                view.setUint32(42, entry.offset, true);
+                
+                // 文件名
+                centralHeader.set(entry.filenameBytes, 46);
+                
+                zipData.push(centralHeader);
+                centralDirSize += centralHeader.length;
+            }
+            
+            // 中央目录结束记录
+            const endRecord = new Uint8Array(22);
+            const endView = new DataView(endRecord.buffer);
+            
+            // 中央目录结束签名
+            endView.setUint32(0, 0x06054b50, true);
+            // 磁盘号
+            endView.setUint16(4, 0, true);
+            // 中央目录所在磁盘号
+            endView.setUint16(6, 0, true);
+            // 本磁盘中央目录记录数
+            endView.setUint16(8, centralDirectory.length, true);
+            // 中央目录记录总数
+            endView.setUint16(10, centralDirectory.length, true);
+            // 中央目录大小
+            endView.setUint32(12, centralDirSize, true);
+            // 中央目录偏移
+            endView.setUint32(16, centralDirStart, true);
+            // 注释长度
+            endView.setUint16(20, 0, true);
+            
+            zipData.push(endRecord);
+            
+            return new Blob(zipData, { type: 'application/zip' });
+        }
+    </script>
+</body>
+</html>

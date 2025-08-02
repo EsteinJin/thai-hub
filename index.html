@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>泰语学习卡片 - 智能语言学习平台</title>
+    <meta name="description" content="智能化的泰语学习卡片应用，通过先进技术和交互式设计为语言学习者提供个性化、沉浸式的学习体验">
+    <meta name="keywords" content="泰语学习,语言学习,学习卡片,泰语教学,在线学习">
+    <meta property="og:title" content="泰语学习卡片 - 智能语言学习平台">
+    <meta property="og:description" content="智能化的泰语学习卡片应用，通过先进技术和交互式设计为语言学习者提供个性化、沉浸式的学习体验">
+    <meta name="twitter:title" content="泰语学习卡片 - 智能语言学习平台">
+    <meta name="twitter:description" content="智能化的泰语学习卡片应用，通过先进技术和交互式设计为语言学习者提供个性化、沉浸式的学习体验">
+
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react@18/umd/react.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://resource.trickle.so/vendor_lib/unpkg/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://resource.trickle.so/vendor_lib/unpkg/lucide-static@0.516.0/font/lucide.css" rel="stylesheet">
+
+    <style type="text/tailwindcss">
+    @layer theme {
+        :root {
+            --primary-color: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --secondary-color: #64748b;
+            --accent-color: #f59e0b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --background-light: #ffffff;
+            --background-dark: #0f172a;
+            --surface-light: #f8fafc;
+            --surface-dark: #1e293b;
+            --text-primary-light: #1e293b;
+            --text-primary-dark: #f1f5f9;
+            --text-secondary-light: #64748b;
+            --text-secondary-dark: #94a3b8;
+            --border-light: #e2e8f0;
+            --border-dark: #334155;
+            --shadow-light: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            --shadow-dark: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+        }
+    }
+
+    @layer base {
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        .dark {
+            background-color: var(--background-dark);
+            color: var(--text-primary-dark);
+        }
+        
+        .light {
+            background-color: var(--background-light);
+            color: var(--text-primary-light);
+        }
+    }
+
+    @layer components {
+        .course-card {
+            @apply bg-white dark:bg-slate-800 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200 dark:border-slate-700;
+        }
+        
+        .learning-card {
+            @apply bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-2xl border border-slate-200 dark:border-slate-700 transform transition-all duration-500;
+        }
+        
+        .btn-primary {
+            @apply bg-[var(--primary-color)] hover:bg-[var(--primary-dark)] text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg;
+        }
+        
+        .btn-secondary {
+            @apply bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 px-6 py-3 rounded-lg font-medium transition-all duration-200;
+        }
+        
+        .progress-bar {
+            @apply w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden;
+        }
+        
+        .progress-fill {
+            @apply bg-[var(--primary-color)] h-full transition-all duration-500 rounded-full;
+        }
+    }
+
+    @layer utilities {
+        .text-shadow {
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-flip {
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+        }
+        
+        .card-flip.flipped {
+            transform: rotateY(180deg);
+        }
+        
+        .card-front, .card-back {
+            backface-visibility: hidden;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .card-back {
+            transform: rotateY(180deg);
+        }
+    }
+    </style>
+</head>
+<body class="light" id="app-body">
+    <div id="root"></div>
+    
+    <script type="text/babel" src="utils/storage.js"></script>
+    <script type="text/babel" src="utils/audio.js"></script>
+    <script type="text/babel" src="utils/zip.js"></script>
+    <script type="text/babel" src="utils/mockData.js"></script>
+    <script type="text/babel" src="components/Header.js"></script>
+    <script type="text/babel" src="components/CourseCard.js"></script>
+    <script type="text/babel" src="components/LearningCard.js"></script>
+    <script type="text/babel" src="components/ProgressBar.js"></script>
+    <script type="text/babel" src="components/ThemeToggle.js"></script>
+    <script type="text/babel" src="components/LoginForm.js"></script>
+    <script type="text/babel" src="pages/CourseSelection.js"></script>
+    <script type="text/babel" src="pages/Learning.js"></script>
+    <script type="text/babel" src="pages/CardBrowser.js"></script>
+    <script type="text/babel" src="pages/FileManagement.js"></script>
+    <script type="text/babel" src="app.js"></script>
+</body>
+</html>
