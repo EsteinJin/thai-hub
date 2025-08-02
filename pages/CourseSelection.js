@@ -1,11 +1,36 @@
 function CourseSelection({ onStartLearning, onBrowseCards, onFileManagement }) {
   try {
     const [isDarkMode, setIsDarkMode] = React.useState(false);
+    const [courseCounts, setCourseCounts] = React.useState({});
 
     React.useEffect(() => {
       const savedTheme = localStorage.getItem('thai-app-theme');
       setIsDarkMode(savedTheme === 'dark');
+      loadCourseCounts();
     }, []);
+
+    const loadCourseCounts = async () => {
+      try {
+        const counts = {};
+        for (let level = 1; level <= 4; level++) {
+          try {
+            const response = await fetch(`/api/cards/${level}`);
+            if (response.ok) {
+              const data = await response.json();
+              counts[level] = data.cards ? data.cards.length : 0;
+            } else {
+              throw new Error('Backend not available');
+            }
+          } catch (error) {
+            // Fallback to mock data count
+            counts[level] = MockData.cards[level] ? MockData.cards[level].length : 0;
+          }
+        }
+        setCourseCounts(counts);
+      } catch (error) {
+        console.error('Error loading course counts:', error);
+      }
+    };
 
     const toggleTheme = () => {
       const newTheme = !isDarkMode;
@@ -34,15 +59,21 @@ function CourseSelection({ onStartLearning, onBrowseCards, onFileManagement }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {Object.entries(MockData.courseInfo).map(([level, course]) => (
-              <CourseCard
-                key={level}
-                level={parseInt(level)}
-                course={course}
-                onStartLearning={onStartLearning}
-                onBrowseCards={onBrowseCards}
-              />
-            ))}
+            {Object.entries(MockData.courseInfo).map(([level, course]) => {
+              const levelNum = parseInt(level);
+              const actualCount = courseCounts[levelNum] !== undefined ? courseCounts[levelNum] : course.totalCards;
+              const updatedCourse = { ...course, totalCards: actualCount };
+              
+              return (
+                <CourseCard
+                  key={level}
+                  level={levelNum}
+                  course={updatedCourse}
+                  onStartLearning={onStartLearning}
+                  onBrowseCards={onBrowseCards}
+                />
+              );
+            })}
           </div>
 
           <div className="text-center">

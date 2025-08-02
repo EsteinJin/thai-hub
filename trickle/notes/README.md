@@ -76,10 +76,19 @@
 - **SoundOfText API**: 后端语音合成服务
 - **Web Speech API**: 浏览器内置语音合成（备用）
 
+### 后端技术栈
+- **Node.js**: 服务器运行环境
+- **Express.js**: Web应用框架
+- **File System**: JSON文件数据持久化
+- **CORS**: 跨域资源共享支持
+- **PM2**: 生产环境进程管理
+
 ### 数据存储
+- **后端文件存储**: 学习卡片数据永久保存在服务器JSON文件中
 - **LocalStorage**: 学习进度和用户偏好设置
-- **Mock Data**: 示例学习卡片数据
+- **API接口**: RESTful API实现前后端数据交互
 - **Session Management**: 用户会话管理
+- **自动备份**: 定时备份机制防止数据丢失
 
 ### 核心组件
 - **App.js**: 主应用组件和路由管理

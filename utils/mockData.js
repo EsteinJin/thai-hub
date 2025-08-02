@@ -120,8 +120,19 @@ const MockData = {
     ]
   },
 
-  // Get cards by level
-  getCardsByLevel: (level) => {
+  // Get cards by level (with backend integration)
+  getCardsByLevel: async (level) => {
+    try {
+      // Try to get from backend first
+      const cards = await ApiUtils.getCards(level);
+      if (cards && cards.length > 0) {
+        return cards;
+      }
+    } catch (error) {
+      console.warn('Backend unavailable, using mock data');
+    }
+    
+    // Fallback to mock data
     return MockData.cards[level] || [];
   },
 
@@ -137,6 +148,36 @@ const MockData = {
   // Get all cards
   getAllCards: () => {
     return Object.values(MockData.cards).flat();
+  },
+
+  // Save cards to backend
+  saveCardsToBackend: async (level, cards) => {
+    try {
+      return await ApiUtils.saveCards(level, cards);
+    } catch (error) {
+      console.error('Failed to save to backend:', error);
+      throw error;
+    }
+  },
+
+  // Upload cards to backend
+  uploadCardsToBackend: async (level, cards) => {
+    try {
+      return await ApiUtils.uploadCards(level, cards);
+    } catch (error) {
+      console.error('Failed to upload to backend:', error);
+      throw error;
+    }
+  },
+
+  // Delete card from backend
+  deleteCardFromBackend: async (level, cardId) => {
+    try {
+      return await ApiUtils.deleteCard(level, cardId);
+    } catch (error) {
+      console.error('Failed to delete from backend:', error);
+      throw error;
+    }
   },
 
   // Course information

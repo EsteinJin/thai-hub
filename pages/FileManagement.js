@@ -18,12 +18,35 @@ function FileManagement({ onBack }) {
     // Load cards when level changes
     React.useEffect(() => {
       if (isLoggedIn) {
-        const levelCards = MockData.getCardsByLevel(selectedLevel);
+        loadCards();
+      }
+    }, [selectedLevel, isLoggedIn]);
+
+    const loadCards = async () => {
+      try {
+        // Try backend first, fallback to mock data
+        let levelCards = [];
+        try {
+          const response = await fetch(`/api/cards/${selectedLevel}`);
+          if (response.ok) {
+            const data = await response.json();
+            levelCards = data.cards || [];
+          } else {
+            throw new Error('Backend not available');
+          }
+        } catch (error) {
+          console.warn('Using fallback mock data:', error);
+          levelCards = MockData.cards[selectedLevel] || [];
+        }
+        
         setCards(levelCards);
         setSelectedCards(new Set());
         setCurrentPage(1);
+      } catch (error) {
+        console.error('Error loading cards:', error);
+        setUploadStatus('加载卡片数据失败');
       }
-    }, [selectedLevel, isLoggedIn]);
+    };
 
     const handleLogin = () => {
       setIsLoggedIn(true);
@@ -34,36 +57,55 @@ function FileManagement({ onBack }) {
       setIsLoggedIn(false);
     };
 
-    const handleFileUpload = (event) => {
+    const handleFileUpload = async (event) => {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const data = JSON.parse(e.target.result);
           if (data.cards && Array.isArray(data.cards)) {
-            // Add new cards to existing mock data
-            const newCards = data.cards.map((card, index) => ({
-              ...card,
-              id: Date.now() + index, // Generate unique IDs
-              level: selectedLevel
-            }));
+            setUploadStatus('正在上传卡片到服务器...');
             
-            // Update mock data
-            if (!MockData.cards[selectedLevel]) {
-              MockData.cards[selectedLevel] = [];
+            try {
+              // Try to upload to backend
+              const response = await fetch(`/api/cards/${selectedLevel}/upload`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ cards: data.cards })
+              });
+
+              if (response.ok) {
+                const result = await response.json();
+                setUploadStatus(result.message);
+                await loadCards(); // Reload from backend
+              } else {
+                throw new Error('Backend upload failed');
+              }
+            } catch (backendError) {
+              console.warn('Backend upload failed, using local storage:', backendError);
+              
+              // Fallback to local mock data
+              const newCards = data.cards.map((card, index) => ({
+                ...card,
+                id: Date.now() + index,
+                level: selectedLevel
+              }));
+              
+              if (!MockData.cards[selectedLevel]) {
+                MockData.cards[selectedLevel] = [];
+              }
+              MockData.cards[selectedLevel].push(...newCards);
+              MockData.courseInfo[selectedLevel].totalCards = MockData.cards[selectedLevel].length;
+              
+              setCards(MockData.cards[selectedLevel]);
+              setUploadStatus(`成功上传 ${data.cards.length} 张卡片到级别 ${selectedLevel} (本地存储)`);
             }
-            MockData.cards[selectedLevel].push(...newCards);
             
-            // Update course info total count
-            MockData.courseInfo[selectedLevel].totalCards = MockData.cards[selectedLevel].length;
-            
-            // Refresh the cards display
-            setCards(MockData.getCardsByLevel(selectedLevel));
             setSelectedCards(new Set());
-            
-            setUploadStatus(`成功上传 ${data.cards.length} 张卡片到级别 ${selectedLevel}`);
             setTimeout(() => setUploadStatus(''), 3000);
           } else {
             setUploadStatus('文件格式错误：缺少 cards 数组');
@@ -334,20 +376,46 @@ function FileManagement({ onBack }) {
                     下载JSON数据
                   </button>
                   <button 
-                    onClick={() => {
+                    onClick={async () => {
                       if (confirm(`确定要删除选中的 ${selectedCards.size} 张卡片吗？`)) {
-                        // Remove selected cards from mock data
-                        MockData.cards[selectedLevel] = MockData.cards[selectedLevel].filter(
-                          card => !selectedCards.has(card.id)
-                        );
+                        setUploadStatus('正在删除卡片...');
                         
-                        // Update course info total count
-                        MockData.courseInfo[selectedLevel].totalCards = MockData.cards[selectedLevel].length;
+                        try {
+                          // Try backend deletion first
+                          let deletedCount = 0;
+                          for (const cardId of selectedCards) {
+                            try {
+                              const response = await fetch(`/api/cards/${selectedLevel}/${cardId}`, {
+                                method: 'DELETE'
+                              });
+                              if (response.ok) {
+                                deletedCount++;
+                              }
+                            } catch (error) {
+                              console.warn(`Failed to delete card ${cardId} from backend`);
+                            }
+                          }
+                          
+                          if (deletedCount > 0) {
+                            await loadCards(); // Reload from backend
+                            setUploadStatus(`成功从服务器删除 ${deletedCount} 张卡片`);
+                          } else {
+                            throw new Error('Backend deletion failed');
+                          }
+                        } catch (backendError) {
+                          console.warn('Backend deletion failed, using local deletion:', backendError);
+                          
+                          // Fallback to local deletion
+                          MockData.cards[selectedLevel] = MockData.cards[selectedLevel].filter(
+                            card => !selectedCards.has(card.id)
+                          );
+                          MockData.courseInfo[selectedLevel].totalCards = MockData.cards[selectedLevel].length;
+                          
+                          setCards(MockData.cards[selectedLevel]);
+                          setUploadStatus(`本地删除 ${selectedCards.size} 张卡片`);
+                        }
                         
-                        // Refresh the display
-                        setCards(MockData.getCardsByLevel(selectedLevel));
                         setSelectedCards(new Set());
-                        setUploadStatus(`成功删除 ${selectedCards.size} 张卡片`);
                         setTimeout(() => setUploadStatus(''), 3000);
                       }
                     }}

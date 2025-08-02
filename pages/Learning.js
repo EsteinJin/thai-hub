@@ -9,10 +9,38 @@ function Learning({ level, onBack, onToggleTheme, isDarkMode }) {
 
     // Load cards and progress on mount
     React.useEffect(() => {
-      const levelCards = MockData.getRandomCards(level, 10);
-      setCards(levelCards);
+      loadLearningCards();
       setProgress(StorageUtils.getProgress(level));
     }, [level]);
+
+    const loadLearningCards = async () => {
+      try {
+        let levelCards = [];
+        try {
+          const response = await fetch(`/api/cards/${level}`);
+          if (response.ok) {
+            const data = await response.json();
+            levelCards = data.cards || [];
+          } else {
+            throw new Error('Backend not available');
+          }
+        } catch (error) {
+          console.warn('Using fallback mock data:', error);
+          levelCards = MockData.cards[level] || [];
+        }
+        
+        // Randomly select up to 10 cards
+        if (levelCards.length > 10) {
+          const shuffled = [...levelCards].sort(() => Math.random() - 0.5);
+          levelCards = shuffled.slice(0, 10);
+        }
+        
+        setCards(levelCards);
+      } catch (error) {
+        console.error('Error loading learning cards:', error);
+        setCards([]);
+      }
+    };
 
     // Keyboard shortcuts
     React.useEffect(() => {

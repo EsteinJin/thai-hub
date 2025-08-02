@@ -48,7 +48,7 @@ function LoginForm({ onLogin }) {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full px-4 py-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="sanghak.kim"
+                  placeholder="请输入用户名"
                   required
                 />
               </div>

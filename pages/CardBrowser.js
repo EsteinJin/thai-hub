@@ -6,9 +6,31 @@ function CardBrowser({ level, onBack }) {
     const [cardsPerPage] = React.useState(9);
 
     React.useEffect(() => {
-      const levelCards = MockData.getCardsByLevel(level);
-      setCards(levelCards);
+      loadBrowserCards();
     }, [level]);
+
+    const loadBrowserCards = async () => {
+      try {
+        let levelCards = [];
+        try {
+          const response = await fetch(`/api/cards/${level}`);
+          if (response.ok) {
+            const data = await response.json();
+            levelCards = data.cards || [];
+          } else {
+            throw new Error('Backend not available');
+          }
+        } catch (error) {
+          console.warn('Using fallback mock data:', error);
+          levelCards = MockData.cards[level] || [];
+        }
+        
+        setCards(levelCards);
+      } catch (error) {
+        console.error('Error loading browser cards:', error);
+        setCards([]);
+      }
+    };
 
     // Pagination logic for lazy loading
     const totalPages = Math.ceil(cards.length / cardsPerPage);

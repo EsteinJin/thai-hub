@@ -1,0 +1,11 @@
+When implementing data storage and persistence functionality
+- Always prioritize backend file storage over client-side storage for critical data
+- Implement proper error handling with fallback to mock data when backend is unavailable
+- Ensure all card upload/delete operations are immediately persisted to server files
+- Provide automatic backup mechanisms to prevent data loss
+- Use JSON file format for easy data portability and debugging
+- Implement proper API endpoints for all CRUD operations
+- Never rely solely on browser storage for important user data
+- Always provide clear feedback to users about data save status
+- Include data validation before saving to prevent corruption
+- Maintain backward compatibility when updating data structures
