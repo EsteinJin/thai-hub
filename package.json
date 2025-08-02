@@ -1,0 +1,52 @@
+{
+  "name": "thai-learning-cards",
+  "version": "1.0.0",
+  "description": "智能化的泰语学习卡片应用，通过先进技术和交互式设计为语言学习者提供个性化、沉浸式的学习体验",
+  "main": "index.html",
+  "scripts": {
+    "start": "python -m http.server 8080 || php -S localhost:8080 || node -e \"require('http').createServer((req,res)=>{require('fs').createReadStream(req.url==='/'?'index.html':req.url.slice(1)).pipe(res)}).listen(8080)\"",
+    "build": "echo 'This is a static HTML application. No build step required.'",
+    "deploy": "echo 'Copy all files to your web server directory'"
+  },
+  "keywords": [
+    "thai",
+    "language-learning",
+    "flashcards",
+    "education",
+    "react",
+    "tailwindcss",
+    "frontend"
+  ],
+  "author": "Thai Learning Cards Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/thai-learning-cards.git"
+  },
+  "homepage": "https://your-domain.com",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "dependencies": {},
+  "devDependencies": {},
+  "staticFiles": [
+    "index.html",
+    "app.js",
+    "utils/",
+    "components/",
+    "pages/",
+    "trickle/"
+  ],
+  "deployment": {
+    "type": "static",
+    "framework": "vanilla-html",
+    "buildCommand": "",
+    "outputDirectory": "./",
+    "installCommand": ""
+  }
+}
