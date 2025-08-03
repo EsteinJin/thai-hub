@@ -1,4 +1,4 @@
-When implementing audio playback functionality
+When implementing audio playbook functionality
 - Always prioritize backend generated audio from cache before attempting new generation
 - Use SoundOfText API for high-quality Thai language pronunciation
 - Implement completion callbacks for sequential audio playback

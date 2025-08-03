@@ -125,10 +125,11 @@ const ZipUtils = {
     });
   },
 
-  // Generate SVG card image with better formatting
-  generateCardSVG: (card, index) => {
+  // Generate PNG card image with better formatting
+  generateCardPNG: (card, index) => {
     const cardNumber = String(index + 1).padStart(3, '0');
-    const filename = `card_${cardNumber}_${card.thai.replace(/[^\w\u0E00-\u0E7F]/g, '_')}.svg`;
+    const thaiName = card.thai.replace(/[^\w\u0E00-\u0E7F]/g, '_');
+    const filename = `${thaiName}_card_${cardNumber}.png`;
     
     // Escape special characters for SVG
     const escapeXml = (text) => {
@@ -139,36 +140,73 @@ const ZipUtils = {
                  .replace(/'/g, '&#39;');
     };
     
-    const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <style>
-      .card-bg { fill: #ffffff; stroke: #e2e8f0; stroke-width: 2; }
-      .thai-text { font-family: Arial, sans-serif; font-size: 28px; font-weight: bold; fill: #1e293b; text-anchor: middle; }
-      .pronunciation { font-family: Arial, sans-serif; font-size: 16px; fill: #64748b; text-anchor: middle; }
-      .chinese { font-family: Arial, sans-serif; font-size: 18px; fill: #374151; text-anchor: middle; }
-      .example-bg { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1; }
-      .example-label { font-family: Arial, sans-serif; font-size: 11px; fill: #64748b; font-weight: bold; }
-      .example-text { font-family: Arial, sans-serif; font-size: 12px; fill: #1e293b; }
-      .example-chinese { font-family: Arial, sans-serif; font-size: 11px; fill: #64748b; }
-      .card-info { font-family: Arial, sans-serif; font-size: 10px; fill: #94a3b8; }
-    </style>
-  </defs>
-  <rect width="400" height="300" class="card-bg" rx="12"/>
-  <text x="200" y="50" class="thai-text">${escapeXml(card.thai)}</text>
-  <text x="200" y="75" class="pronunciation">[${escapeXml(card.pronunciation)}]</text>
-  <text x="200" y="100" class="chinese">${escapeXml(card.chinese)}</text>
-  <rect x="15" y="120" width="370" height="130" class="example-bg" rx="8"/>
-  <text x="25" y="140" class="example-label">例句 EXAMPLE:</text>
-  <text x="25" y="160" class="example-text">${escapeXml(ZipUtils.wrapText(card.example, 30))}</text>
-  <text x="25" y="180" class="example-chinese">${escapeXml(ZipUtils.wrapText(card.example_translation, 35))}</text>
-  <text x="25" y="270" class="card-info">卡片 ${cardNumber} | 级别 ${card.level} | 泰语学习卡片</text>
-</svg>`;
-
-    return {
-      content: svgContent,
-      filename: filename
-    };
+    // Create canvas to generate PNG
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d');
+    
+    // Set background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 400, 300);
+    
+    // Draw border
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, 398, 298);
+    
+    // Set font styles
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#1e293b';
+    
+    // Thai text
+    ctx.font = 'bold 28px Arial';
+    ctx.fillText(card.thai, 200, 50);
+    
+    // Pronunciation
+    ctx.font = '16px Arial';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(`[${card.pronunciation}]`, 200, 75);
+    
+    // Chinese translation
+    ctx.font = '18px Arial';
+    ctx.fillStyle = '#374151';
+    ctx.fillText(card.chinese, 200, 100);
+    
+    // Example background
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(15, 120, 370, 130);
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.strokeRect(15, 120, 370, 130);
+    
+    // Example text
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 11px Arial';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('例句 EXAMPLE:', 25, 140);
+    
+    ctx.font = '12px Arial';
+    ctx.fillStyle = '#1e293b';
+    ctx.fillText(ZipUtils.wrapText(card.example, 30), 25, 160);
+    
+    ctx.font = '11px Arial';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(ZipUtils.wrapText(card.example_translation, 35), 25, 180);
+    
+    // Card info
+    ctx.font = '10px Arial';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`卡片 ${cardNumber} | 级别 ${card.level} | 泰语学习卡片`, 25, 270);
+    
+    // Convert to blob
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        resolve({
+          content: blob,
+          filename: filename
+        });
+      }, 'image/png', 0.9);
+    });
   },
 
   // Helper function to wrap text for SVG
@@ -477,21 +515,21 @@ const ZipUtils = {
           onProgress(`正在下载卡片 ${i + 1}/${cards.length}: ${card.thai}`, Math.round((downloadCount / totalFiles) * 100));
         }
         
-        // Download SVG
+        // Download PNG image
         try {
-          const svgData = ZipUtils.generateCardSVG(card, i);
-          const svgBlob = new Blob([svgData.content], { type: 'image/svg+xml' });
-          ZipUtils.triggerDownload(svgBlob, svgData.filename);
+          const pngData = await ZipUtils.generateCardPNG(card, i);
+          ZipUtils.triggerDownload(pngData.content, pngData.filename);
           downloadCount++;
           await ZipUtils.delay(300); // Delay between downloads
         } catch (error) {
-          console.error(`Error downloading SVG for card ${card.id}:`, error);
+          console.error(`Error downloading PNG for card ${card.id}:`, error);
           downloadCount++;
         }
         
-        // Download word audio (generate if not cached)
+        // Download word audio with Thai name
         try {
-          const wordFilename = `${baseName}_word.mp3`;
+          const thaiName = card.thai.replace(/[^\w\u0E00-\u0E7F]/g, '_');
+          const wordFilename = `${thaiName}_word.mp3`;
           await ZipUtils.generateAndDownloadAudio(card.thai, wordFilename, 'th');
           downloadCount++;
         } catch (error) {
@@ -499,9 +537,10 @@ const ZipUtils = {
           downloadCount++;
         }
         
-        // Download example audio (generate if not cached)  
+        // Download example audio with Thai name
         try {
-          const exampleFilename = `${baseName}_example.mp3`;
+          const thaiName = card.thai.replace(/[^\w\u0E00-\u0E7F]/g, '_');
+          const exampleFilename = `${thaiName}_example.mp3`;
           await ZipUtils.generateAndDownloadAudio(card.example, exampleFilename, 'th');
           downloadCount++;
         } catch (error) {

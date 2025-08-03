@@ -138,7 +138,7 @@ const MockData = {
 
   // Get random cards from level (max 10)
   getRandomCards: (level, limit = 10) => {
-    const cards = MockData.getCardsByLevel(level);
+    const cards = MockData.cards[level] || [];
     if (cards.length <= limit) return cards;
     
     const shuffled = [...cards].sort(() => Math.random() - 0.5);

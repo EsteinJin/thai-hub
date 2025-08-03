@@ -127,6 +127,210 @@ app.delete('/api/cards/:level/:cardId', async (req, res) => {
   }
 });
 
+// Audio storage endpoint with MP3 download
+app.post('/api/audio/store', async (req, res) => {
+  try {
+    const { cardId, audioType, audioUrl, text } = req.body;
+    const audioDir = path.join(DATA_DIR, 'audio');
+    await fs.mkdir(audioDir, { recursive: true });
+    
+    // Download MP3 file to server
+    let localFilePath = null;
+    try {
+      const fetch = (await import('node-fetch')).default;
+      const response = await fetch(audioUrl);
+      if (response.ok) {
+        const buffer = await response.buffer();
+        const filename = `${cardId}_${audioType}.mp3`;
+        localFilePath = path.join(audioDir, filename);
+        await fs.writeFile(localFilePath, buffer);
+        console.log(`Audio file saved: ${filename}`);
+      }
+    } catch (downloadError) {
+      console.warn('Failed to download MP3 file:', downloadError);
+    }
+    
+    const audioData = {
+      cardId,
+      audioType,
+      audioUrl,
+      localFile: localFilePath ? path.basename(localFilePath) : null,
+      text,
+      createdAt: new Date().toISOString()
+    };
+    
+    const metaFilename = `${cardId}_${audioType}.json`;
+    const metaFilePath = path.join(audioDir, metaFilename);
+    await fs.writeFile(metaFilePath, JSON.stringify(audioData, null, 2));
+    
+    res.json({ 
+      success: true, 
+      message: localFilePath ? 'Audio file downloaded and stored' : 'Audio URL stored',
+      hasLocalFile: !!localFilePath
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to store audio' });
+  }
+});
+
+// Get stored audio data
+app.get('/api/audio/:cardId/:audioType', async (req, res) => {
+  try {
+    const { cardId, audioType } = req.params;
+    const audioDir = path.join(DATA_DIR, 'audio');
+    const metaFile = `${cardId}_${audioType}.json`;
+    const metaPath = path.join(audioDir, metaFile);
+    
+    const data = await fs.readFile(metaPath, 'utf8');
+    const audioData = JSON.parse(data);
+    
+    // If local file exists, provide local URL
+    if (audioData.localFile) {
+      audioData.localUrl = `/api/audio/file/${audioData.localFile}`;
+    }
+    
+    res.json(audioData);
+  } catch (error) {
+    res.status(404).json({ error: 'Audio data not found' });
+  }
+});
+
+// Serve audio files
+app.get('/api/audio/file/:filename', async (req, res) => {
+  try {
+    const { filename } = req.params;
+    const audioDir = path.join(DATA_DIR, 'audio');
+    const filePath = path.join(audioDir, filename);
+    
+    await fs.access(filePath);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.sendFile(path.resolve(filePath));
+  } catch (error) {
+    res.status(404).json({ error: 'Audio file not found' });
+  }
+});
+
+// Bulk audio generation endpoint
+app.post('/api/audio/generate-bulk', async (req, res) => {
+  try {
+    const { cards } = req.body;
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const card of cards) {
+      try {
+        // Generate word audio
+        const wordResponse = await generateAndStoreAudio(card.thai, `${card.id}_word`, 'word');
+        if (wordResponse.success) successCount++;
+        else failCount++;
+        
+        // Generate example audio
+        const exampleResponse = await generateAndStoreAudio(card.example, `${card.id}_example`, 'example');
+        if (exampleResponse.success) successCount++;
+        else failCount++;
+        
+        // Small delay to avoid overwhelming API
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (error) {
+        console.error(`Error generating audio for card ${card.id}:`, error);
+        failCount += 2;
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Generated ${successCount} audio files, ${failCount} failed`,
+      successCount,
+      failCount
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Bulk audio generation failed' });
+  }
+});
+
+// Helper function to generate and store audio
+async function generateAndStoreAudio(text, cardId, audioType) {
+  try {
+    const fetch = (await import('node-fetch')).default;
+    
+    // Generate audio using SoundOfText API
+    const generateResponse = await fetch('https://api.soundoftext.com/sounds', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        engine: 'Google',
+        data: { text: text, voice: 'th-TH' }
+      })
+    });
+    
+    if (!generateResponse.ok) {
+      throw new Error('Audio generation failed');
+    }
+    
+    const result = await generateResponse.json();
+    if (!result.success || !result.id) {
+      throw new Error('Invalid generation response');
+    }
+    
+    // Poll for audio completion
+    let audioUrl = null;
+    for (let i = 0; i < 10; i++) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const pollResponse = await fetch(`https://api.soundoftext.com/sounds/${result.id}`);
+      if (pollResponse.ok) {
+        const pollResult = await pollResponse.json();
+        if (pollResult.status === 'Done' && pollResult.location) {
+          audioUrl = pollResult.location;
+          break;
+        }
+        if (pollResult.status === 'Error') {
+          throw new Error('Audio generation error');
+        }
+      }
+    }
+    
+    if (!audioUrl) {
+      throw new Error('Audio generation timeout');
+    }
+    
+    // Store audio with local download
+    const audioDir = path.join(DATA_DIR, 'audio');
+    await fs.mkdir(audioDir, { recursive: true });
+    
+    // Download MP3 file
+    const audioResponse = await fetch(audioUrl);
+    if (audioResponse.ok) {
+      const buffer = await audioResponse.buffer();
+      const filename = `${cardId}.mp3`;
+      const localFilePath = path.join(audioDir, filename);
+      await fs.writeFile(localFilePath, buffer);
+      
+      // Store metadata
+      const audioData = {
+        cardId,
+        audioType,
+        audioUrl,
+        localFile: filename,
+        text,
+        createdAt: new Date().toISOString()
+      };
+      
+      const metaFilename = `${cardId}.json`;
+      const metaFilePath = path.join(audioDir, metaFilename);
+      await fs.writeFile(metaFilePath, JSON.stringify(audioData, null, 2));
+      
+      return { success: true, localFile: filename };
+    } else {
+      throw new Error('Failed to download audio file');
+    }
+  } catch (error) {
+    console.error('Generate and store audio error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Backup endpoint
 app.get('/api/backup', async (req, res) => {
   try {

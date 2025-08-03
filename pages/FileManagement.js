@@ -266,14 +266,34 @@ function FileManagement({ onBack }) {
                 <div className="flex flex-wrap gap-2">
                   <button 
                     onClick={async () => {
-                      setUploadStatus('正在生成音频...');
+                      setUploadStatus('正在生成音频文件...');
                       const selectedCardList = cards.filter(card => selectedCards.has(card.id));
-                      for (const card of selectedCardList) {
-                        await AudioUtils.generateAudio(card.thai, 'th');
-                        await AudioUtils.generateAudio(card.example, 'th');
+                      
+                      try {
+                        // Use backend bulk generation
+                        const response = await fetch('/api/audio/generate-bulk', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ cards: selectedCardList })
+                        });
+                        
+                        if (response.ok) {
+                          const result = await response.json();
+                          setUploadStatus(`服务器生成完成: ${result.message}`);
+                        } else {
+                          throw new Error('Backend generation failed');
+                        }
+                      } catch (error) {
+                        console.warn('Backend generation failed, using client generation:', error);
+                        // Fallback to client-side generation
+                        for (const card of selectedCardList) {
+                          await AudioUtils.generateAudio(card.thai, 'th');
+                          await AudioUtils.generateAudio(card.example, 'th');
+                        }
+                        setUploadStatus(`客户端生成完成: ${selectedCards.size} 张卡片音频`);
                       }
-                      setUploadStatus(`已为 ${selectedCards.size} 张卡片生成音频`);
-                      setTimeout(() => setUploadStatus(''), 3000);
+                      
+                      setTimeout(() => setUploadStatus(''), 5000);
                     }}
                     className="btn-primary text-sm py-1 px-3"
                   >

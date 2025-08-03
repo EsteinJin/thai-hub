@@ -118,20 +118,20 @@ function Learning({ level, onBack, onToggleTheme, isDarkMode }) {
             cards[currentIndex].example, 
             'th',
             () => {
-              // Auto advance after audio finishes
+              // Auto advance after audio finishes - wait longer for completion
               if (autoAdvance && currentIndex < cards.length - 1) {
                 setTimeout(() => {
                   setCurrentIndex(prev => prev + 1);
-                }, 200); // Faster interval between cards
+                }, 1500); // Increased delay after audio completion
               } else if (autoAdvance && currentIndex === cards.length - 1) {
                 // All cards completed, show completion options
                 setTimeout(() => {
                   setShowCompletion(true);
-                }, 800);
+                }, 2000); // Longer delay for completion
               }
             }
           );
-        }, 200); // Faster initial delay
+        }, 500); // Longer initial delay
         return () => clearTimeout(timer);
       }
     }, [currentIndex, cards, autoAdvance]);
@@ -269,11 +269,42 @@ function Learning({ level, onBack, onToggleTheme, isDarkMode }) {
               </div>
               <div className="space-y-3">
                 <button
-                  onClick={() => {
-                    const newCards = MockData.getRandomCards(level, 10);
-                    setCards(newCards);
-                    setCurrentIndex(0);
-                    setShowCompletion(false);
+                  onClick={async () => {
+                    try {
+                      // Load new cards from backend or mock data
+                      let newCards = [];
+                      try {
+                        const response = await fetch(`/api/cards/${level}`);
+                        if (response.ok) {
+                          const data = await response.json();
+                          const allCards = data.cards || [];
+                          // Randomly select up to 10 cards
+                          if (allCards.length > 10) {
+                            const shuffled = [...allCards].sort(() => Math.random() - 0.5);
+                            newCards = shuffled.slice(0, 10);
+                          } else {
+                            newCards = allCards;
+                          }
+                        } else {
+                          throw new Error('Backend not available');
+                        }
+                      } catch (error) {
+                        console.warn('Using fallback mock data:', error);
+                        newCards = MockData.cards[level] || [];
+                        // Randomly select up to 10 cards from mock data
+                        if (newCards.length > 10) {
+                          const shuffled = [...newCards].sort(() => Math.random() - 0.5);
+                          newCards = shuffled.slice(0, 10);
+                        }
+                      }
+                      
+                      setCards(newCards);
+                      setCurrentIndex(0);
+                      setShowCompletion(false);
+                    } catch (error) {
+                      console.error('Error loading new cards:', error);
+                      setShowCompletion(false);
+                    }
                   }}
                   className="w-full btn-primary py-3"
                 >
